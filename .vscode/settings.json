@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "bc26_module.h": "c",
+        "infrared_detection_module.h": "c",
+        "cmsis_os.h": "c",
+        "a9500_iot_module.h": "c",
+        "user_define.h": "c",
+        "uart-core.h": "c",
+        "bc26_module_at_command.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}
