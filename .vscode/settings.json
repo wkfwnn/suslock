@@ -6,7 +6,8 @@
         "a9500_iot_module.h": "c",
         "user_define.h": "c",
         "uart-core.h": "c",
-        "bc26_module_at_command.h": "c"
+        "bc26_module_at_command.h": "c",
+        "fifo.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

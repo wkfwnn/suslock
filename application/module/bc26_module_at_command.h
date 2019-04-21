@@ -80,28 +80,28 @@ typedef struct
     const char *at_commond;
     const char *immediately_expect_value;
     int immediately_time_out_ms;
-    const char *follow_up_value;
-    int follow_up_time_out_s;
+    const void *follow_up_value;
+    int follow_up_time_out_ms;
 } At_commond_struct_t;
 
 At_commond_struct_t bc26_command[] = {
-    {AT, OK, 300, "", 0},
-    {AT_CPIN$, CPIN_READY, 5000, "", 0},
-    {AT_CSQ, CSQ_VALUE, 300, "", 0},
-    {AT_CFUN_1, OK, 15000, "", 0},
-    {AT_CGATT$, CGATT$, 75000, "", 0},
-    {AT_CEREG$,CEREG$,300,"",0},
-    {AT_CGSN_1,CGSN$,300,"",0},
-    {AT_QSCLK_DISABLE_SLEEP,OK,300,"",0},
-    {AT_QSCLK_ENABLE_LIGHT_DEEP_SLEEP_WAKEBY_PSM_EINT,OK,300,"",0},
-    {AT_QSCLK_ENABLE_LIGHT_SLEEP_WAKEBY_MAIN_UART,OK,300,"",0},
-    {AT_QLWSERV,OK,300,"",0},
-    {AT_QLWCONF,OK,300,"",0},
-    {AT_QLWADDOBJ_WRITE_PAR,OK,300,"",0},
-    {AT_QLWADDOBJ_READ_PAR,OK,300,"",0},
-    {AT_QLWOPEN_1,OK,300,CONNECT_OK,128},
-    {AT_QLWCFG_HEX_MODE,OK,300,"",0},
-    {AT_QLWDATASEND_CON,OK,300,SEND_OK,128},
+    {AT, OK, 300, NULL, 0},
+    {AT_CPIN$, CPIN_READY, 5000, NULL, 0},
+    {AT_CSQ, CSQ_VALUE, 300, NULL, 0},
+    {AT_CFUN_1, OK, 15000, NULL, 0},
+    {AT_CGATT$, CGATT$, 75000, NULL, 0},
+    {AT_CEREG$,CEREG$,300,NULL,0},
+    {AT_CGSN_1,CGSN$,300,NULL,0},
+    {AT_QSCLK_DISABLE_SLEEP,OK,300,NULL,0},
+    {AT_QSCLK_ENABLE_LIGHT_DEEP_SLEEP_WAKEBY_PSM_EINT,OK,300,NULL,0},
+    {AT_QSCLK_ENABLE_LIGHT_SLEEP_WAKEBY_MAIN_UART,OK,300,NULL,0},
+    {AT_QLWSERV,OK,300,NULL,0},
+    {AT_QLWCONF,OK,300,NULL,0},
+    {AT_QLWADDOBJ_WRITE_PAR,OK,300,NULL,0},
+    {AT_QLWADDOBJ_READ_PAR,OK,300,NULL,0},
+    {AT_QLWOPEN_1,OK,300,CONNECT_OK,128000},
+    {AT_QLWCFG_HEX_MODE,OK,300,NULL,0},
+    {AT_QLWDATASEND_CON,OK,300,SEND_OK,128000},
 };
 
 #endif

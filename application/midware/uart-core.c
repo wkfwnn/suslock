@@ -163,6 +163,7 @@ void HAL_UART_Rx_FrameCpltCallback(UART_HandleTypeDef *huart)
 					uart_map_array[i].uart_read_call_back_array[j](uart_map_array[i].huart_queue_p,huart->RxXferCount);
 				}	
 			}
+			DBG_LOG_ISR("ubits event %d\n",uart_map_array[i].read_event_bits);
 			xResult = xEventGroupSetBitsFromISR(uart_core_read_event_group,uart_map_array[i].read_event_bits,
 												&xHigherPriorityTaskWoken);
 			/* Was the message posted successfully */
@@ -297,29 +298,26 @@ void uart_core_read_task_function(void const * argument)
 		const TickType_t xTicksToWait = pdMS_TO_TICKS( portMAX_DELAY);
 		uxBits = xEventGroupWaitBits( uart_core_read_event_group,UART_CORE_READ_BIT_ALL,
 							          pdTRUE,pdFALSE,xTicksToWait);
+		//DBG_LOG("xEventGroupWaitBits wait %d\n",uxBits);
 		//	
 		//uart_read_one_frame_data(&huart2,uart_map_array[1].huart_queue_p,MAX_UART_QUEUE_SIZE);
 		//uart_read_one_frame_data(&huart3,uart_map_array[2].huart_queue_p,MAX_UART_QUEUE_SIZE);
-		if( ( uxBits & ( UART_CORE_READ_BIT_ALL ) == ( UART_CORE_READ_BIT_ALL ))){
-		
-		}else if( ( uxBits & UART1_READ_CORE_BIT_0 ) != 0 ){
-			DBG_LOG("uart1 start readhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+		if( ( uxBits & UART1_READ_CORE_BIT_0 ) != 0 ){
+			//DBG_LOG("uart1 start readhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
 			uart_read_one_frame_data(&huart1,uart_map_array[0].huart_queue_p,MAX_UART_QUEUE_SIZE);
 			/* xEventGroupWaitBits() returned because just BIT_0 was set. */
 		}else if( ( uxBits & UART2_READ_CORE_BIT_1 ) != 0 ){
 			uart_read_one_frame_data(&huart2,uart_map_array[1].huart_queue_p,MAX_UART_QUEUE_SIZE);
-			DBG_LOG("uart2 start readhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+			//DBG_LOG("uart2 start readhaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
 		/* xEventGroupWaitBits() returned because just BIT_4 was set. */
 		}else if( ( uxBits & UART3_READ_CORE_BIT_2 ) != 0 ){
 			uart_read_one_frame_data(&huart3,uart_map_array[2].huart_queue_p,MAX_UART_QUEUE_SIZE);
-			DBG_LOG("uart3 start read\n");
+			//DBG_LOG("uart3 start read\n");
 			/* xEventGroupWaitBits() returned because just BIT_6 was set. */
 		}else{
 		/* xEventGroupWaitBits() returned because xTicksToWait ticks passed
 		without either BIT_0 or BIT_4 becoming set. */
 		}
-		//DBG_LOG("nidaye\n");
-
 	}
 }
 
