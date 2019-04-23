@@ -16,10 +16,8 @@
 
 void soc_start()
 {
-	
-	//uart_core_task_create();
-	create_state_task();
 	console_task_create();
+	create_state_task();
 	//ble_task_create();
 	iotmodule_task_create();
 	lock_task_create();
@@ -34,6 +32,7 @@ void soc_start()
 
 void bsp_module_start()
 {
+	//log_module_init();
 	//首先打开uart-core 模块
 	uart_core_module_start();
 	bc26_module_init();

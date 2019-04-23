@@ -9,7 +9,7 @@
 
 typedef struct {
 	osThreadId task_handle;
-	uint8_t ble_task_buff[MAX_UART_QUEUE_SIZE];
+	uint8_t ble_task_buff[50];
 	uint8_t ble_task_size;
 	EventGroupHandle_t ble_task_event_handle;
 }ble_task_struct_t;
@@ -29,29 +29,14 @@ typedef enum {
 
 
 
-void ble_task_data_call_back(uint8_t *data,uint16_t size)
+void ble_task_data_call_back(struct fifo *fifo)
 {
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE,xResult;
-	memcpy(ble_task.ble_task_buff,data,
-		  (ble_task.ble_task_size = (size >= MAX_UART_QUEUE_SIZE? MAX_UART_QUEUE_SIZE:size)));
-	#if 1
-	xResult = xEventGroupSetBitsFromISR(ble_task.ble_task_event_handle,BLE_TASK_EVENT_BITS,
-												&xHigherPriorityTaskWoken);
-	/* Was the message posted successfully */
-	if( xResult != pdFAIL ){
-		/* If xHigherPriorityTaskWoken is now set to pdTRUE then a context
-		switch should be requested. The macro used is port specific and will
-		be either portYIELD_FROM_ISR() or portEND_SWITCHING_ISR() - refer to
-		the documentation page for the port being used. */
-		portYIELD_FROM_ISR( xHigherPriorityTaskWoken);
-	}
-	#else
-	xResult = xTaskResumeFromISR(ble_task.task_handle);
-	if(xResult != pdTRUE ){
-		DBG_LOG_ISR("ble task resume err\n");		
+	ble_task.ble_task_size = fifo_out_peek(fifo, ble_task.ble_task_buff,sizeof(ble_task.ble_task_buff));
+	if(ble_task.ble_task_size > 0){
+		xEventGroupSetBits(ble_task.ble_task_event_handle,BLE_TASK_EVENT_BITS);
 
 	}
-	#endif	
+	
 }
 
 

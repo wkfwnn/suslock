@@ -122,9 +122,10 @@ static int checkCommandOK(const char *command)
             osDelay(FLOW_UP_TIME_OUT_MS_UNIT);
         } while (i < flow_up_delay_time_cout);
     }
-	
 
+	
 exit:
+	DBG_LOG("checkCommandOK return %d\n",ret);
     return ret;
 }
 
@@ -161,20 +162,30 @@ void bc26_module_selftest()
 
     ret = send_command(AT_CSQ);
 }
-void bc26_uart_read_call_back(uint8_t *data, uint16_t size)
+void bc26_uart_read_call_back(struct fifo *fifo)
 {
 
+	#if 0
     int len = fifo_in(&bc26_module_fifo, data, size);
     if (len != size)
     {
         DBG_LOG_ISR("bc26 fifo overflow %d\n", len);
     }
-    DBG_LOG_ISR("bc26 size %d\n", size);
+    DBG_LOG("bc26 size %d\n", size);
+	#endif
 }
 
 void bc26_module_task_function(void *argument)
 {
+	#if 0
     user_error_t sc;
+	int i = 0;
+	uint8_t buff[10];
+	while(1){
+		vTaskDelay(10000);
+		fifo_out(ua)
+		for(i = 0;i < 10;
+	}
     // DBG_LOG("bc26 task func\n");
     // sc = uart_core_read_register(bc26_uart_handle,bc26_uart_read_call_back);
     // if(sc != RET_OK){
@@ -183,6 +194,7 @@ void bc26_module_task_function(void *argument)
     // while(1){
     //     osDelay(1000);
     // }
+	#endif
 }
 
 void bc26_module_init()
@@ -203,9 +215,11 @@ void bc26_module_init()
     {
         DBG_LOG("bc26 uart core read register fail %d\n", sc);
     }
-    // osThreadDef(bc26_task, bc26_module_task_function, osPriorityNormal, 0, 128);
-    // osThreadId task_handle = osThreadCreate(osThread(bc26_task), NULL);
-    // if(task_handle == NULL){
-    // 	DBG_LOG("bc26_module_task_function create fail\n");
-    // }
+	#if 0
+     osThreadDef(bc26_task, bc26_module_task_function, osPriorityNormal, 0, 64);
+     osThreadId task_handle = osThreadCreate(osThread(bc26_task), NULL);
+     if(task_handle == NULL){
+     	DBG_LOG("bc26_module_task_function create fail\n");
+     }
+	 #endif
 }

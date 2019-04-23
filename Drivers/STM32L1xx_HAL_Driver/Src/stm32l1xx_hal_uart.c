@@ -177,8 +177,6 @@ static void UART_SetConfig (UART_HandleTypeDef *huart);
 static HAL_StatusTypeDef UART_Transmit_IT(UART_HandleTypeDef *huart);
 static HAL_StatusTypeDef UART_EndTransmit_IT(UART_HandleTypeDef *huart);
 static HAL_StatusTypeDef UART_Receive_IT(UART_HandleTypeDef *huart);
-static HAL_StatusTypeDef UsartReceive_IDLE_IT(UART_HandleTypeDef *huart);
-
 static void UART_DMATransmitCplt(DMA_HandleTypeDef *hdma);
 static void UART_DMATxHalfCplt(DMA_HandleTypeDef *hdma);
 static void UART_DMAReceiveCplt(DMA_HandleTypeDef *hdma);
@@ -1228,13 +1226,6 @@ void HAL_UART_IRQHandler(UART_HandleTypeDef *huart)
   { 
     UART_Receive_IT(huart);
   }
-  tmp_flag = __HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE);
-  tmp_it_source = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_IDLE);
-  /* UART in mode Receiver ---------------------------------------------------*/
-  if((tmp_flag != RESET) && (tmp_it_source != RESET))
-  { 
-    UsartReceive_IDLE_IT(huart);
-  }
   
   tmp_flag = __HAL_UART_GET_FLAG(huart, UART_FLAG_TXE);
   tmp_it_source = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_TXE);
@@ -1343,12 +1334,6 @@ __weak void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
            the HAL_UART_ErrorCallback can be implemented in the user file
    */ 
 }
-
-
- __weak void HAL_UART_Rx_FrameCpltCallback(UART_HandleTypeDef *huart)
- {
-
- }
 
 /**
   * @}
@@ -1612,7 +1597,6 @@ static void UART_DMATxHalfCplt(DMA_HandleTypeDef *hdma)
 static void UART_DMAReceiveCplt(DMA_HandleTypeDef *hdma)  
 {
   UART_HandleTypeDef* huart = ( UART_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
-  uint32_t tmp_it_source;
   /* DMA Normal mode*/
   if ( HAL_IS_BIT_CLR(hdma->Instance->CCR, DMA_CCR_CIRC) )
   {
@@ -1621,6 +1605,7 @@ static void UART_DMAReceiveCplt(DMA_HandleTypeDef *hdma)
     /* Disable the DMA transfer for the receiver request by setting the DMAR bit 
        in the UART CR3 register */
     CLEAR_BIT(huart->Instance->CR3, USART_CR3_DMAR);
+
     /* Check if a transmit process is ongoing or not */
     if(huart->State == HAL_UART_STATE_BUSY_TX_RX) 
     {
@@ -1656,15 +1641,10 @@ static void UART_DMARxHalfCplt(DMA_HandleTypeDef *hdma)
 static void UART_DMAError(DMA_HandleTypeDef *hdma)   
 {
   UART_HandleTypeDef* huart = ( UART_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
-  uint32_t tmp_it_source;
   huart->RxXferCount = 0;
   huart->TxXferCount = 0;
   huart->State= HAL_UART_STATE_READY;
   huart->ErrorCode |= HAL_UART_ERROR_DMA;
-  tmp_it_source = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_IDLE);
-  if(tmp_it_source != RESET){
-	__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 
-  }
   HAL_UART_ErrorCallback(huart);
 }
 
@@ -1812,79 +1792,6 @@ static HAL_StatusTypeDef UART_EndTransmit_IT(UART_HandleTypeDef *huart)
   
   return HAL_OK;
 }
-
-HAL_StatusTypeDef HAL_UART_Receive_Frame_DMA(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)
-{
-	HAL_StatusTypeDef status;
-	
-	status = HAL_UART_Receive_DMA(huart, pData, Size);  
-	if(status == HAL_OK){
-		__HAL_UART_ENABLE_IT(huart, UART_IT_IDLE);  
-		
-	}
-	return status;   	
-}
-
-
-
-
-
-//¡ä??¨²?¨®¨º????D?D??  
-static HAL_StatusTypeDef UsartReceive_IDLE_IT(UART_HandleTypeDef *huart)  
-{  
-    uint32_t tmp_state; 
-	uint32_t temp;
-  	tmp_state = huart->State; 
-	
-  	if((tmp_state == HAL_UART_STATE_BUSY_RX) || (tmp_state == HAL_UART_STATE_BUSY_TX_RX)){
-		if((__HAL_UART_GET_FLAG(huart,UART_FLAG_IDLE) != RESET)){
-			__HAL_UART_CLEAR_IDLEFLAG(huart); 
-			__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 
-			HAL_UART_DMAStop(huart); 
-			/* DMA Normal mode*/
-			if ( HAL_IS_BIT_CLR(huart->hdmarx->Instance->CCR, DMA_CCR_CIRC) ){
-				huart->RxXferCount = 0;
-
-				/* Disable the DMA transfer for the receiver request by setting the DMAR bit 
-				in the UART CR3 register */
-				CLEAR_BIT(huart->Instance->CR3, USART_CR3_DMAR);
-				/* Check if a transmit process is ongoing or not */
-				if(huart->State == HAL_UART_STATE_BUSY_TX_RX) {
-					huart->State = HAL_UART_STATE_BUSY_TX;
-				}else{
-					huart->State = HAL_UART_STATE_READY;
-				}
-			}
-	        temp = huart->hdmarx->Instance->CNDTR;
-			if(temp == huart->RxXferSize ){
-				huart->RxXferCount = huart->RxXferSize;
-			}else{
-				huart->RxXferCount = huart->RxXferSize - temp;
-			} 
-			HAL_UART_Rx_FrameCpltCallback(huart);
-			return HAL_OK;
-    	}  	
-	}else{
-		/*if only flag is UART_FLAG_IDLE, but huart->State is HAL_UART_STATE_BUSY_TX or READY
-			mean threr is rx complete happended ,so only clear UART_FLAG_IDLE flag 
-			and disable UART_IT_IDLE interupt,call back a rx frame call back*/
-		if((__HAL_UART_GET_FLAG(huart,UART_FLAG_IDLE) != RESET)){
-			__HAL_UART_CLEAR_IDLEFLAG(huart); 
-			__HAL_UART_DISABLE_IT(huart, UART_IT_IDLE); 
-		 	temp = huart->hdmarx->Instance->CNDTR;
-			if(temp == huart->RxXferSize ){
-				huart->RxXferCount = huart->RxXferSize;
-			}else{
-				huart->RxXferCount = huart->RxXferSize - temp;
-			} 
-			HAL_UART_Rx_FrameCpltCallback(huart);
-			return HAL_OK;
-		}
-		return HAL_BUSY; 
-	}
-	
-}  
-
 
 /**
   * @brief  Receives an amount of data in non blocking mode 

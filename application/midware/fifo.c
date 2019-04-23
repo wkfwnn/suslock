@@ -120,8 +120,10 @@ static void fifo_copy_out(struct fifo *fifo, unsigned char *dst, unsigned int le
 	off &= fifo->mask;
 	l = min(len, size - off);
 
-	memcpy(dst, fifo->data + off, l);
-	memcpy(dst + l, fifo->data, len - l);
+	if(dst != NULL){
+		memcpy(dst, fifo->data + off, l);
+		memcpy(dst + l, fifo->data, len - l);
+	}
 }
 
 unsigned int fifo_out_peek(struct fifo *fifo, unsigned char *buf, unsigned int len)
@@ -136,6 +138,7 @@ unsigned int fifo_out_peek(struct fifo *fifo, unsigned char *buf, unsigned int l
 	return len;
 }
 
+/*传递buf为NULL，可以做到仅仅是移除数据*/
 unsigned int fifo_out(struct fifo *fifo, unsigned char *buf, unsigned int len)
 {
 	len = fifo_out_peek(fifo, buf, len);

@@ -36,7 +36,7 @@ void motor_lock_task_data_call_back(uint8_t *data,uint16_t size)
 {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE,xResult;
 	memcpy(motor_lock_task.motor_lock_task_buff,data,
-		  (motor_lock_task.motor_lock_task_size = (size >= MAX_UART_QUEUE_SIZE? MAX_UART_QUEUE_SIZE:size)));
+		  (motor_lock_task.motor_lock_task_size = (size >= sizeof(motor_lock_task.motor_lock_task_buff)? sizeof(motor_lock_task.motor_lock_task_buff):size)));
 	#if 1
 	xResult = xEventGroupSetBitsFromISR(motor_lock_task.motor_lock_task_event_handle,MOTOR_LOCK_TASK_BLE_DATA_EVENT_BITS,
 												&xHigherPriorityTaskWoken);
@@ -268,13 +268,7 @@ void motor_lock_task_function(void const * argument)
 void motor_lock_task_create(void)
 {
 	int sc = 0x00;
-	osThreadDef(motor_lock_task_thread, motor_lock_task_function, osPriorityNormal, 0, 128);
-	motor_lock_task.task_handle = osThreadCreate(osThread(motor_lock_task_thread), NULL);
-	if(motor_lock_task.task_handle  == NULL){
-		DBG_LOG("motor_lock_task_function create fail\n");
-	}else{
-		DBG_LOG("motor_lock_task_function create success\n");
-	}
+	
 	motor_lock_task.motor_lock_task_event_handle = xEventGroupCreate();
 	/* Was the event group created successfully */
 	if( motor_lock_task.motor_lock_task_event_handle == NULL ){
@@ -299,6 +293,13 @@ void motor_lock_task_create(void)
 	
 	DBG_LOG("current status is %d\n",motor_lock_task.motor_lock_status);
 	
+	osThreadDef(motor_lock_task_thread, motor_lock_task_function, osPriorityNormal, 0, 128);
+	motor_lock_task.task_handle = osThreadCreate(osThread(motor_lock_task_thread), NULL);
+	if(motor_lock_task.task_handle  == NULL){
+		DBG_LOG("motor_lock_task_function create fail\n");
+	}else{
+		DBG_LOG("motor_lock_task_function create success\n");
+	}
 	
 }
 

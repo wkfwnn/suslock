@@ -20,10 +20,7 @@
 /*software define */
 
 #define BLE_MAX_CALL_BACK_COUNT    1
-typedef void (*ble_read_call_back)(uint8_t *data,uint16_t size);
-
-
-
+typedef void (*ble_read_call_back)(struct fifo *fifo);
 
 
 typedef struct {

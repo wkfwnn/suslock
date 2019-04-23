@@ -63,11 +63,11 @@ void module_self_test()
 
 }
 
-void ble_uart_read_call_back(uint8_t *data,uint16_t size)
+void ble_uart_read_call_back(struct fifo *fifo)
 {
 	uint8_t i = 0;
 	for (i = 0; i < ble_module.ble_call_back_count; ++i){
-		ble_module.ble_call_back_map[i](data,size);
+		ble_module.ble_call_back_map[i](fifo);
 	}
 }
 

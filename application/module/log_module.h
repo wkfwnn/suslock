@@ -6,3 +6,5 @@
 
 #define DBG_LOG (printf("[%u ms] %s line:%u \t",  xTaskGetTickCount(), __FILENAME__, __LINE__), printf)
 #define DBG_LOG_ISR (printf("[%u ms] %s line:%u \t", xTaskGetTickCountFromISR(), __FILENAME__, __LINE__), printf)
+
+//void log_module_init(void);
