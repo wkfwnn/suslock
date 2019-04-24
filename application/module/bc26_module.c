@@ -7,11 +7,19 @@
 #include "bc26_module_at_command.h"
 #include "fifo.h"
 
-#define BC26_MAX_CACHE_DATA_SIZE 1024
+#define BC26_MAX_CACHE_DATA_SIZE 512
+#define BC26_FIFO_LEN    BC26_MAX_CACHE_DATA_SIZE
 static uart_handle_t bc26_uart_handle;
 static uint8_t bc26_data[BC26_MAX_CACHE_DATA_SIZE];
-static uint8_t bc26_parser_data[BC26_MAX_CACHE_DATA_SIZE + 1];
+static uint8_t bc26_at_ret_data[BC26_MAX_CACHE_DATA_SIZE];
 static struct fifo bc26_module_fifo;
+
+//头2个字节描述的是字节长度
+#define TMP_DATA_OFFSET   2
+static uint8_t bc26_tmp_data[BC26_MAX_CACHE_DATA_SIZE + TMP_DATA_OFFSET];
+
+#define BC26_DATA_EVENT_BITS (1 << 0)
+static EventGroupHandle_t bc26_data_event_handle;
 
 #define container_of(ptr, type, member) ({\
     const typeof(((type *)0)->member) *__mptr = (ptr);\
@@ -45,7 +53,7 @@ static At_commond_struct_t *commandIndexPara(const char *member_command)
     int i, size;
     for (i = 0; i < sizeof(bc26_command) / sizeof(At_commond_struct_t); i++)
     {
-        DBG_LOG("i = %d\n", i);
+       // DBG_LOG("i = %d\n", i);
         if ((size = strlen(member_command)) == strlen(bc26_command[i].at_commond))
         {
             if (strncmp(member_command, bc26_command[i].at_commond, size) == 0)
@@ -70,7 +78,7 @@ void iot_send_data(uint8_t *data, uint8_t size)
 
 static int checkCommandOK(const char *command)
 {
-    int ret = 0;
+    int ret = 1;
     int immediately_time_count = 0;
     int flow_up_delay_time_cout = 0;
     int i = 0;
@@ -88,10 +96,10 @@ static int checkCommandOK(const char *command)
         int len = fifo_used(&bc26_module_fifo);
         if (len > 0)
         {
-            fifo_out(&bc26_module_fifo, bc26_parser_data, len);
-            bc26_parser_data[len] = 0;
-			DBG_LOG("immediately:%s,expect value %s\n",bc26_parser_data,p->immediately_expect_value);
-            if (strstr(p->immediately_expect_value, bc26_parser_data) != NULL)
+            fifo_out(&bc26_module_fifo, bc26_at_ret_data, len);
+            bc26_at_ret_data[len] = 0;
+            DBG_LOG("immediately:%s,expect value %s\n", bc26_at_ret_data, p->immediately_expect_value);
+            if (strstr(p->immediately_expect_value, bc26_at_ret_data) != NULL)
             {
                 ret = 0;
             }
@@ -110,10 +118,10 @@ static int checkCommandOK(const char *command)
             int len = fifo_used(&bc26_module_fifo);
             if (len > 0)
             {
-                fifo_out(&bc26_module_fifo, bc26_parser_data, len);
-                bc26_parser_data[len] = 0;
-				DBG_LOG("flow-up:%s\n",bc26_parser_data);
-                if (strstr(p->follow_up_value, bc26_parser_data) != NULL)
+                fifo_out(&bc26_module_fifo, bc26_at_ret_data, len);
+                bc26_at_ret_data[len] = 0;
+                DBG_LOG("flow-up:%s\n", bc26_at_ret_data);
+                if (strstr(p->follow_up_value, bc26_at_ret_data) != NULL)
                 {
                     ret = 0;
                 }
@@ -123,16 +131,15 @@ static int checkCommandOK(const char *command)
         } while (i < flow_up_delay_time_cout);
     }
 
-	
 exit:
-	DBG_LOG("checkCommandOK return %d\n",ret);
+    DBG_LOG("checkCommandOK return %d\n", ret);
     return ret;
 }
 
 int send_command(char *at_command)
 {
     user_error_t sc = 0;
-	DBG_LOG("send command %s\n",at_command);
+    DBG_LOG("send command %s\n", at_command);
     sc = uart_write_data(bc26_uart_handle, at_command, strlen(at_command));
     if (sc != RET_OK)
     {
@@ -154,7 +161,8 @@ void bc26_module_selftest()
     BC26_MODULE_POWER_ON_AND_NEVER_SLEEP();
     osDelay(100);
     ret = send_command(AT);
-    if (ret != 0){
+    if (ret != 0)
+    {
         DBG_LOG("send %s fail\n", AT);
     }
 
@@ -165,43 +173,64 @@ void bc26_module_selftest()
 void bc26_uart_read_call_back(struct fifo *fifo)
 {
 
-	#if 0
-    int len = fifo_in(&bc26_module_fifo, data, size);
-    if (len != size)
+    uint16_t *tmp_len = (uint16_t*)bc26_tmp_data;
+    *tmp_len = fifo_out_peek(fifo, &bc26_tmp_data[TMP_DATA_OFFSET], (sizeof(bc26_tmp_data) - TMP_DATA_OFFSET));
+    if (*tmp_len > 0)
     {
-        DBG_LOG_ISR("bc26 fifo overflow %d\n", len);
+       	xEventGroupSetBits(bc26_data_event_handle,BC26_DATA_EVENT_BITS);
     }
-    DBG_LOG("bc26 size %d\n", size);
-	#endif
 }
+
+
+void data_care_about_prase_func(uint8_t*data,uint16_t data_len)
+{
+		
+
+}
+
 
 void bc26_module_task_function(void *argument)
 {
-	#if 0
-    user_error_t sc;
-	int i = 0;
-	uint8_t buff[10];
-	while(1){
-		vTaskDelay(10000);
-		fifo_out(ua)
-		for(i = 0;i < 10;
-	}
-    // DBG_LOG("bc26 task func\n");
-    // sc = uart_core_read_register(bc26_uart_handle,bc26_uart_read_call_back);
-    // if(sc != RET_OK){
-    //     DBG_LOG("bc26 uart core read register fail %d\n",sc);
-    // }
-    // while(1){
-    //     osDelay(1000);
-    // }
-	#endif
+    EventBits_t uxBits;
+    const TickType_t xTicksToWait = pdMS_TO_TICKS(portMAX_DELAY);
+    while (1)
+    {
+        if (bc26_data_event_handle)
+        {
+            uxBits = xEventGroupWaitBits(bc26_data_event_handle, BC26_DATA_EVENT_BITS,
+                                         pdTRUE, pdFALSE, xTicksToWait);
+
+            if ((uxBits & BC26_DATA_EVENT_BITS) != 0)
+            {
+            	data_care_about_prase_func(&bc26_tmp_data[TMP_DATA_OFFSET],*((uint16_t *)bc26_tmp_data));
+				if(BC26_FIFO_LEN - fifo_used(&bc26_module_fifo) < *((uint16_t *)bc26_tmp_data)){
+					fifo_out(&bc26_module_fifo,NULL, 
+						     *((uint16_t *)bc26_tmp_data) - (BC26_FIFO_LEN - fifo_used(&bc26_module_fifo)));	
+				}
+				fifo_in(&bc26_module_fifo, &bc26_tmp_data[TMP_DATA_OFFSET], *((uint16_t *)bc26_tmp_data));
+            }
+            else
+            {
+                DBG_LOG("bc26 task receive unaccepted event\n");
+            }
+        }
+    }
 }
 
 void bc26_module_init()
 {
     user_error_t sc;
     memset(bc26_data, 0x00, sizeof(bc26_data));
-    int ret = fifo_init(&bc26_module_fifo, bc26_data, sizeof(bc26_data));
+    bc26_data_event_handle = xEventGroupCreate();
+    if (bc26_data_event_handle == NULL)
+    {
+        DBG_LOG("console.console_event_handle group create fail\n");
+    }
+    else
+    {
+        xEventGroupClearBits(bc26_data_event_handle, (BC26_DATA_EVENT_BITS));
+    }
+    int ret = fifo_init(&bc26_module_fifo, bc26_data, BC26_FIFO_LEN);
     if (ret != 0)
     {
         DBG_LOG("bc26_module fifo init\n");
@@ -215,11 +244,10 @@ void bc26_module_init()
     {
         DBG_LOG("bc26 uart core read register fail %d\n", sc);
     }
-	#if 0
-     osThreadDef(bc26_task, bc26_module_task_function, osPriorityNormal, 0, 64);
-     osThreadId task_handle = osThreadCreate(osThread(bc26_task), NULL);
-     if(task_handle == NULL){
-     	DBG_LOG("bc26_module_task_function create fail\n");
-     }
-	 #endif
+    osThreadDef(bc26_task, bc26_module_task_function, osPriorityNormal, 0, 64);
+    osThreadId task_handle = osThreadCreate(osThread(bc26_task), NULL);
+    if (task_handle == NULL)
+    {
+        DBG_LOG("bc26_module_task_function create fail\n");
+    }
 }

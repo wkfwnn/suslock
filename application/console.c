@@ -102,10 +102,11 @@ void console_task_function(void const * argument)
 	}else{
 		DBG_LOG("console core register success \n");
 	}
+	EventBits_t uxBits;
+	const TickType_t xTicksToWait = pdMS_TO_TICKS( portMAX_DELAY);
+	
 	while(1){
 		#if 1
-		EventBits_t uxBits;
-		const TickType_t xTicksToWait = pdMS_TO_TICKS( portMAX_DELAY);
 		 if(console.console_event_handle){
 			uxBits = xEventGroupWaitBits( console.console_event_handle,CONSOLE_EVENT_BITS,
 						          pdTRUE,pdFALSE,xTicksToWait);
@@ -134,19 +135,15 @@ void console_task_create(void)
 	/* Was the event group created successfully */
 	if( console.console_event_handle == NULL ){
 		DBG_LOG("console.console_event_handle group create fail\n");	
-	}
-	else{		
-		DBG_LOG("console.console_event_handle create success\n");
-		xEventGroupClearBits(console.console_event_handle,(CONSOLE_EVENT_BITS));
-	}
+	}	
+	xEventGroupClearBits(console.console_event_handle,(CONSOLE_EVENT_BITS));
+	
 	register_help_commond();
 	
 	osThreadDef(console_task, console_task_function, osPriorityNormal, 0, 128);
 	console.task_handle = osThreadCreate(osThread(console_task), NULL);
 	if(console.task_handle  == NULL){
 		DBG_LOG("console_task_function create fail\n");
-	}else{
-		DBG_LOG("console_task_function create success\n");
 	}
 }
 
