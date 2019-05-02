@@ -14,6 +14,7 @@
 #include "iot_module_task.h"
 #include "timed_report_task.h"
 #include "timed_poll_net_data_task.h"
+#include "rtc.h"
 
 
 
@@ -46,6 +47,7 @@ void bsp_module_start()
 	}
 	motor_module_start();
 	infrared_detection_module_start();
+	rtc_init();
 }
 
 void application_start()

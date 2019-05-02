@@ -486,6 +486,7 @@ int bc26_module_init()
         DBG_LOG("bc26_module_task_function create fail\n");
     }
     osDelay(20);
+
     ret = bc26_module_selftest();
     if (ret != RET_OK)
     {
