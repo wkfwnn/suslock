@@ -31,7 +31,7 @@ void task_state_function(void const * argument)
 }
 
 
-void task_uart_commond_excute_func()
+void task_uart_commond_excute_func(uint8_t *data,uint8_t size)
 {
 	DBG_LOG("task_uart_commond_excute_func\n");
 	vTaskResume(task_state_handle);
@@ -44,8 +44,6 @@ void create_state_task(void)
 	task_state_handle = osThreadCreate(osThread(task_state), NULL);
 	if(task_state_handle == NULL){
 		DBG_LOG("task_state_function create fail\n");
-	}else{
-		DBG_LOG("task_state_function create success\n");
 	}
 	ret = console_commond_register("CPU",strlen("CPU"),task_uart_commond_excute_func,"cpu usage,stack, left stack");
 	if(ret != RET_OK){

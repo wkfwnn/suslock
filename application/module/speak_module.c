@@ -7,8 +7,8 @@
 #define SPEAK_GPIO_GROUP             GPIOA
 #define SPEAK_GPIO_CONTROL           GPIO_PIN_8
 
-#define speak_alarm()  (HAL_GPIO_WritePin(SPEAK_GPIO_GROUP,SPEAK_GPIO_CONTROL ,GPIO_PIN_SET))
-#define speak_mute()   (HAL_GPIO_WritePin(SPEAK_GPIO_GROUP,SPEAK_GPIO_CONTROL ,GPIO_PIN_RESET))
+#define speak_alarm()  (HAL_GPIO_WritePin(SPEAK_GPIO_GROUP,SPEAK_GPIO_CONTROL ,GPIO_PIN_RESET))
+#define speak_mute()   (HAL_GPIO_WritePin(SPEAK_GPIO_GROUP,SPEAK_GPIO_CONTROL ,GPIO_PIN_SET))
 
 
 

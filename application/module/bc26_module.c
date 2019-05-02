@@ -22,7 +22,7 @@ static uint8_t bc26_at_ret_data[BC26_MAX_CACHE_DATA_SIZE];
 static struct fifo bc26_module_fifo;
 
 //IMEI len is 15, add \0 1 byte
-#define IMEI_LEN   15 
+#define IMEI_LEN 15
 static uint8_t imei_data[IMEI_LEN + 1];
 
 //singal quality
@@ -185,34 +185,28 @@ int send_command(char *at_command, int times)
 {
     int i = 0, ret = 0;
     user_error_t sc = 0;
-    do
+    while ((i++) < times)
     {
-
-        i++;
         BC26_LOG("send command %s for times %d\n", at_command, i);
         sc = uart_write_data(bc26_uart_handle, at_command, strlen(at_command));
         if (sc != RET_OK)
         {
             BC26_LOG("send %s fail ret = %d\n", at_command, sc);
             ret = RET_ERROR;
-        }
-        if (ret != RET_OK)
-        {
-            BC26_LOG("write uart fail\n");
             continue;
         }
         ret = checkCommandOK(at_command);
         if (ret != 0)
         {
             BC26_LOG("send %s fail\n", at_command);
+            continue;
         }
         else
         {
             ret = RET_OK;
             goto exit;
         }
-
-    } while (i < times);
+    }
 
 exit:
     return ret;
@@ -237,18 +231,19 @@ int bc26_module_selftest()
         BC26_LOG("send %s fail\n", AT_CPIN$);
         goto exit;
     }
-	#if 0
+#if 0
     ret = send_command(AT_CSQ, 3);
     if (ret != RET_OK)
     {
         BC26_LOG("send %s fail\n", AT_CSQ);
         goto exit;
     }
-	#endif 
-	ret = send_command(AT_CGSN_1, 3);
-	if(ret != RET_OK){
-		BC26_LOG("send %s fail\n",AT_CGSN_1);
-	}
+#endif
+    ret = send_command(AT_CGSN_1, 3);
+    if (ret != RET_OK)
+    {
+        BC26_LOG("send %s fail\n", AT_CGSN_1);
+    }
 #if 0
     ret = send_command(AT_CFUN_1);
 
@@ -274,67 +269,73 @@ void bc26_uart_read_call_back(struct fifo *fifo)
     *tmp_len = fifo_out_peek(fifo, &bc26_tmp_data[TMP_DATA_OFFSET], (sizeof(bc26_tmp_data) - TMP_DATA_OFFSET - 1));
     if (*tmp_len > 0)
     {
-    	bc26_tmp_data[*tmp_len] = '\0';
+        bc26_tmp_data[*tmp_len] = '\0';
         xEventGroupSetBits(bc26_data_event_handle, BC26_DATA_EVENT_BITS);
     }
 }
 
 void data_care_about_prase_func(uint8_t *data, uint16_t data_len)
 {
-	char * tmp = NULL;
-	if(data != NULL){
-		//update IMEI string return format : "+CGSN: 866971032315140"
-		if ((tmp = strstr((char *)data,CGSN$)) != NULL){
-			#if 1
-			//BC26_LOG(" IMEI is %s\n",data);
-			imei_data[IMEI_LEN] = '\0';
-			strncpy((char *)imei_data,(char *)tmp + sizeof(CGSN$)-1,IMEI_LEN);   
-			BC26_LOG("IMEI is %s\n",imei_data);
-			#endif
-		}//update signal quality  return format:"+CSQ: 7,0"
-		else if((tmp = strstr((char*)data,CSQ_VALUE)) != NULL){
-			#if 1
-			#define MAX_CSQ_BUFF_LEN 2
-			uint8_t csq_buff[MAX_CSQ_BUFF_LEN + 1];
-			memset(csq_buff,0x00,sizeof(csq_buff));
-			char *tmp1 = strstr((char*)data,",");
-			if(tmp1 != NULL){
-				char *csq_index =  tmp + sizeof(CSQ_VALUE)- 1;
-				uint8_t csq_len = tmp1 - csq_index;
-				//DBG_LOG_WITH_OUT_TIME("CSQ len is %d\n",csq_len);
-				if(csq_len <= MAX_CSQ_BUFF_LEN ){
-					memcpy(csq_buff,csq_index,csq_len);
-					//DBG_LOG_WITH_OUT_TIME("CSQ value is %s\n",csq_buff);
-					csq_singal_value = (uint8_t)atoi(csq_buff);
-					BC26_LOG("CSQ value is %d\n",csq_singal_value);
-					csq_len = 0;
-				}
-			}
-			#undef MAX_CSQ_BUFF_LEN
-			#endif
-		}else if((tmp = strstr((char*)data,RETURN_NETWORK_DATA)) != NULL){	
-			char *last_comma_index = strrchr(data, ',');
-			char *line_break_index =  strrchr(data, '\r');
-			if(last_comma_index != NULL && line_break_index != NULL && line_break_index > last_comma_index)
-			{
-				char *data_len_index = last_comma_index + 1;
-				#define MAX_NET_WORK_DATA_LEN 2
-				uint8_t buff[MAX_NET_WORK_DATA_LEN + 1];
-				memset(buff,0x00,sizeof(buff));
-				uint8_t len =  line_break_index - last_comma_index;
-				uint8_t net_data_len = 0;
-				if(len < MAX_NET_WORK_DATA_LEN){
-					memcpy(buff,data_len_index,len);
-					net_data_len = atoi(buff);
-					BC26_LOG("module data len is %d\n",net_data_len);
-				}
-				#undef MAX_NET_WORK_DATA_LEN
-			}
+    char *tmp = NULL;
+    if (data != NULL)
+    {
+        //update IMEI string return format : "+CGSN: 866971032315140"
+        if ((tmp = strstr((char *)data, CGSN$)) != NULL)
+        {
+#if 1
+            //BC26_LOG(" IMEI is %s\n",data);
+            imei_data[IMEI_LEN] = '\0';
+            strncpy((char *)imei_data, (char *)tmp + sizeof(CGSN$) - 1, IMEI_LEN);
+            BC26_LOG("IMEI is %s\n", imei_data);
+#endif
+        } //update signal quality  return format:"+CSQ: 7,0"
+        else if ((tmp = strstr((char *)data, CSQ_VALUE)) != NULL)
+        {
+#if 1
+#define MAX_CSQ_BUFF_LEN 2
+            uint8_t csq_buff[MAX_CSQ_BUFF_LEN + 1];
+            memset(csq_buff, 0x00, sizeof(csq_buff));
+            char *tmp1 = strstr((char *)data, ",");
+            if (tmp1 != NULL)
+            {
+                char *csq_index = tmp + sizeof(CSQ_VALUE) - 1;
+                uint8_t csq_len = tmp1 - csq_index;
+                //DBG_LOG_WITH_OUT_TIME("CSQ len is %d\n",csq_len);
+                if (csq_len <= MAX_CSQ_BUFF_LEN)
+                {
+                    memcpy(csq_buff, csq_index, csq_len);
+                    //DBG_LOG_WITH_OUT_TIME("CSQ value is %s\n",csq_buff);
+                    csq_singal_value = (uint8_t)atoi(csq_buff);
+                    BC26_LOG("CSQ value is %d\n", csq_singal_value);
+                    csq_len = 0;
+                }
+            }
+#undef MAX_CSQ_BUFF_LEN
+#endif
+        }
+        else if ((tmp = strstr((char *)data, RETURN_NETWORK_DATA)) != NULL)
+        {
 
-
-		}
-	}
-	
+            char *last_comma_index = strrchr(data, ',');
+            char *line_break_index = strrchr(data, '\r');
+            if (last_comma_index != NULL && line_break_index != NULL && line_break_index > last_comma_index)
+            {
+                char *data_len_index = last_comma_index + 1;
+#define MAX_NET_WORK_DATA_LEN 2
+                uint8_t buff[MAX_NET_WORK_DATA_LEN + 1];
+                memset(buff, 0x00, sizeof(buff));
+                uint8_t len = line_break_index - last_comma_index;
+                uint8_t net_data_len = 0;
+                if (len < MAX_NET_WORK_DATA_LEN)
+                {
+                    memcpy(buff, data_len_index, len);
+                    net_data_len = atoi(buff);
+                    BC26_LOG("module data len is %d\n", net_data_len);
+                }
+#undef MAX_NET_WORK_DATA_LEN
+            }
+        }
+    }
 }
 
 void bc26_module_task_function(void *argument)
@@ -380,70 +381,73 @@ void bc26_send_test_data()
     //if ()
 #if 1
 
-	
     ret = send_command(AT_CFUN_1, 3);
 
-	ret = send_command(AT_CEREG$,3);
-	
-    ret = send_command(AT_CGATT$,3);
+    ret = send_command(AT_CEREG$, 3);
 
-	ret = send_command(AT_CGPADDR_1,3);
-    ret = send_command(AT_QLWSERV_IP,3);
-    ret = send_command(AT_QLWCONF_TEST,3);
-    ret = send_command(AT_QLWADDOBJ_WRITE_PAR,3);
-    ret = send_command(AT_QLWADDOBJ_READ_PAR,3);
+    ret = send_command(AT_CGATT$, 3);
+
+    ret = send_command(AT_CGPADDR_1, 3);
+    ret = send_command(AT_QLWSERV_IP, 3);
+    ret = send_command(AT_QLWCONF_TEST, 3);
+    ret = send_command(AT_QLWADDOBJ_WRITE_PAR, 3);
+    ret = send_command(AT_QLWADDOBJ_READ_PAR, 3);
     osDelay(2000);
-    ret = send_command(AT_QLWOPEN_1,3);
-    ret = send_command(AT_QLWCFG_HEX_MODE,3);
-    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST,3);
+    ret = send_command(AT_QLWOPEN_1, 3);
+    ret = send_command(AT_QLWCFG_HEX_MODE, 3);
+    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST, 3);
 #endif
 }
-
 
 /*return RET_ERROR,command fail quality is not update,or return updated quality*/
 int get_csq_singal_quality(uint8_t *quality)
 {
-	int ret = send_command(AT_CSQ,3);
-	if(ret != RET_OK){
-		ret = RET_ERROR;
-	}else{
-		ret = RET_OK;
-	}
-	*quality = csq_singal_value;
-	return ret;
+    int ret = send_command(AT_CSQ, 3);
+    if (ret != RET_OK)
+    {
+        ret = RET_ERROR;
+    }
+    else
+    {
+        ret = RET_OK;
+    }
+    *quality = csq_singal_value;
+    return ret;
 }
 
 /*return -1, or real send data size*/
 int bc26_module_send_data(uint8_t *data, uint8_t size)
 {
-	int ret;
+    int ret;
     if (bc26_init_flag != 1)
     {
         bc26_send_test_data();
-    }else{
-		ret = RET_ERROR;
-	}
-	ret = send_command(AT_CFUN_1, 3);
+    }
+    else
+    {
+        ret = RET_ERROR;
+    }
+    ret = send_command(AT_CFUN_1, 3);
 
-	ret = send_command(AT_CEREG$,3);
-	
-    ret = send_command(AT_CGATT$,3);
+    ret = send_command(AT_CEREG$, 3);
 
-	ret = send_command(AT_CGPADDR_1,3);
-	
-    ret = send_command(AT_QLWSERV_IP,3);
-	
-    ret = send_command(AT_QLWCONF_TEST,3);
-	
-    ret = send_command(AT_QLWADDOBJ_WRITE_PAR,3);
-	
-    ret = send_command(AT_QLWADDOBJ_READ_PAR,3);
+    ret = send_command(AT_CGATT$, 3);
+
+    ret = send_command(AT_CGPADDR_1, 3);
+
+    ret = send_command(AT_QLWSERV_IP, 3);
+
+    ret = send_command(AT_QLWCONF_TEST, 3);
+
+    ret = send_command(AT_QLWADDOBJ_WRITE_PAR, 3);
+
+    ret = send_command(AT_QLWADDOBJ_READ_PAR, 3);
     osDelay(2000);
-    ret = send_command(AT_QLWOPEN_1,3);
-	
-    ret = send_command(AT_QLWCFG_HEX_MODE,3);
-	
-    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST,3);
+    ret = send_command(AT_QLWOPEN_1, 3);
+
+    ret = send_command(AT_QLWCFG_HEX_MODE, 3);
+
+    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST, 3);
 exit:
     return ret;
 }

@@ -31,10 +31,7 @@ void lock_task_create()
 	lock_thread_handle = osThreadCreate(osThread(lock_task),NULL);
 	if(lock_thread_handle == NULL){
 		DBG_LOG("lock_function create fail\n");
-	}else{
-		DBG_LOG("lock_function create success\n");
 	}
 	osDelay(20);
-
 }
 

@@ -7,7 +7,7 @@
 #define MAX_COMMOND_LEN   6
 #define MAX_FUNCTION_INSTRUCTIONS_LEN (30)
 
-typedef void (*call_back_function_p)(void);
+typedef void (*call_back_function_p)(uint8_t *data,uint8_t size);
 
 typedef struct {
 	char commond_name[MAX_COMMOND_LEN];

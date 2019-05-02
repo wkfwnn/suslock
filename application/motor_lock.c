@@ -275,7 +275,6 @@ void motor_lock_task_create(void)
 		DBG_LOG("motor_lock_task.motor_lock_task_event_handle group create fail\n");	
 	}
 	else{		
-		DBG_LOG("motor_lock_task.motor_lock_task_event_handle create success\n");
 		xEventGroupClearBits(motor_lock_task.motor_lock_task_event_handle,(MOTOR_LOCK_TASK_BLE_DATA_EVENT_BITS));
 		xEventGroupClearBits(motor_lock_task.motor_lock_task_event_handle,(MOTOR_LOCK_TASK_INFRARED_DETECTION_STATUS_EVENT_BITS));
 	}
@@ -297,8 +296,6 @@ void motor_lock_task_create(void)
 	motor_lock_task.task_handle = osThreadCreate(osThread(motor_lock_task_thread), NULL);
 	if(motor_lock_task.task_handle  == NULL){
 		DBG_LOG("motor_lock_task_function create fail\n");
-	}else{
-		DBG_LOG("motor_lock_task_function create success\n");
 	}
 	osDelay(20);
 	

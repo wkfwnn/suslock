@@ -56,8 +56,7 @@
 
 /* USER CODE END Includes */
 
-/* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc;
+
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -80,9 +79,9 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_ADC_Init(void);
-void StartDefaultTask(void const * argument);
+static void MX_USART1_UART_Init(void);
+void StartDefaultTask(void const *argument);
 void INTX_DISABLE(void)
 {		  
 	__ASM volatile("cpsid i");
@@ -134,7 +133,7 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
-  MX_ADC_Init();
+ // MX_ADC_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
@@ -239,6 +238,7 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
 }
 
+#if 0
 /* ADC init function */
 static void MX_ADC_Init(void)
 {
@@ -278,6 +278,7 @@ static void MX_ADC_Init(void)
   }
 
 }
+#endif
 
 /* USART1 init function */
 static void MX_USART1_UART_Init(void)

@@ -4,13 +4,18 @@
 #include "cmsis_os.h"
 #include "stdio.h"
 #include "user_define.h"
+#include "batterySoc.h"
+
 
 void iot_module_function(void const * argument)
 {
 	//iot_module_power_and_selftest();
 	DBG_LOG("start bc26 selftest\n");
+	uint8_t soc;
+	float voltage;
 	char buff[2] = {0x01,0x20};
-	bc26_module_send_data(buff,sizeof(buff));
+	//bc26_module_send_data(buff,sizeof(buff));
+	get_battery_soc(&soc,&voltage);
 	while(1){
 		vTaskDelay(1000);
 	}
@@ -37,7 +42,7 @@ void iot_task_data_call_back(uint8_t *data,uint16_t size)
 
 void iotmodule_task_create()
 {
-#if 1
+#if 0
 	DBG_LOG("iotmodule_task_create");
 	osThreadId iot_module_thread_handle;
 	osThreadDef(iot_module_task, iot_module_function, osPriorityLow, 0, 128);
