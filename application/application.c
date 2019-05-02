@@ -32,10 +32,14 @@ void soc_start()
 
 void bsp_module_start()
 {
+	int ret = 0;
 	//log_module_init();
 	//首先打开uart-core 模块
 	uart_core_module_start();
-	bc26_module_init();
+	ret = bc26_module_init();
+	if(ret != RET_OK){
+		DBG_LOG("bc26 init fail %d\n",ret);
+	}
 	motor_module_start();
 	infrared_detection_module_start();
 }

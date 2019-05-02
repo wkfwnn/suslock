@@ -40,7 +40,7 @@ void task_uart_commond_excute_func()
 void create_state_task(void)
 {
 	user_error_t ret;
-	osThreadDef(task_state, task_state_function, osPriorityLow, 0, 140);
+	osThreadDef(task_state, task_state_function, osPriorityLow, 0, 256);
 	task_state_handle = osThreadCreate(osThread(task_state), NULL);
 	if(task_state_handle == NULL){
 		DBG_LOG("task_state_function create fail\n");
@@ -51,6 +51,7 @@ void create_state_task(void)
 	if(ret != RET_OK){
 		DBG_LOG("cpu commond register fail\n");
 	}
+	osDelay(20);
 	
 }
 

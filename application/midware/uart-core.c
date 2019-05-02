@@ -473,6 +473,6 @@ void uart_core_module_start()
 		DBG_LOG("uart_core_read_task_function create fail\n");
 	}
 	//this make uart_core_read_task_function can enter
-	vTaskDelay(10);
+	osDelay(20);
 #endif
 }

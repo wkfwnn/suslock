@@ -8,9 +8,8 @@
 #define BC26_PIN7_PWERKEY      GPIO_PIN_5
 #define BC26_PIN7_RESET        GPIO_PIN_4
 
-void bc26_module_start(void);
-void iot_send_data(uint8_t *data,uint8_t size);
-void bc26_module_init(void);
-void bc26_module_selftest();
+int  bc26_module_send_data(uint8_t *data,uint8_t size);
+int bc26_module_init(void);
+int get_csq_singal_quality(uint8_t *quality);
 #endif
 

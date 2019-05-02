@@ -145,6 +145,7 @@ void console_task_create(void)
 	if(console.task_handle  == NULL){
 		DBG_LOG("console_task_function create fail\n");
 	}
+	osDelay(20);
 }
 
 /*

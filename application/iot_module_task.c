@@ -9,7 +9,8 @@ void iot_module_function(void const * argument)
 {
 	//iot_module_power_and_selftest();
 	DBG_LOG("start bc26 selftest\n");
-	bc26_module_selftest();
+	char buff[2] = {0x01,0x20};
+	bc26_module_send_data(buff,sizeof(buff));
 	while(1){
 		vTaskDelay(1000);
 	}
@@ -37,19 +38,13 @@ void iot_task_data_call_back(uint8_t *data,uint16_t size)
 void iotmodule_task_create()
 {
 #if 1
-	//int sc =  a9500_data_read_call_back_register(iot_task_data_call_back);
-	//if(sc != RET_OK){
-	//	DBG_LOG("iotmodule_task register motor_lock data read fail %d\n",sc);
-	//}
 	DBG_LOG("iotmodule_task_create");
 	osThreadId iot_module_thread_handle;
 	osThreadDef(iot_module_task, iot_module_function, osPriorityLow, 0, 128);
 	iot_module_thread_handle = osThreadCreate(osThread(iot_module_task),NULL);
 	if(iot_module_thread_handle == NULL){
 		DBG_LOG("iot_module_function create fail\n");
-	}else{
-		//DBG_LOG("iot_module_function create success\n");
 	}
-	
+	osDelay(20);
 #endif
 }

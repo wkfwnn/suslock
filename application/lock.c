@@ -34,6 +34,7 @@ void lock_task_create()
 	}else{
 		DBG_LOG("lock_function create success\n");
 	}
+	osDelay(20);
 
 }
 

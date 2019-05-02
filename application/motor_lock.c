@@ -300,6 +300,7 @@ void motor_lock_task_create(void)
 	}else{
 		DBG_LOG("motor_lock_task_function create success\n");
 	}
+	osDelay(20);
 	
 }
 
