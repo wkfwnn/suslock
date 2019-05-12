@@ -75,7 +75,7 @@ if(HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0) != 0x32F2){
 void rtc_init(void)
 {
 	DBG_LOG("rtc_init\n");
-#if 1
+#if 0
 	MX_RTC_Init();	
 #endif
 }

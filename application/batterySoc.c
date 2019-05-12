@@ -125,6 +125,8 @@ void get_battery_soc(uint8_t *soc,float* voltage)
 	BATTERY_LOG("value ava %f\n",value_ava);
 
 	*voltage = VREF/FULL_SCALE * value_ava;
+
+	*soc = 10;
 	
 	BATTERY_LOG("voltage is %f\n",*voltage);
 	

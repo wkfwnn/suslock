@@ -13,7 +13,7 @@
 #include "bc26_module.h"
 #include "iot_module_task.h"
 #include "timed_report_task.h"
-#include "timed_poll_net_data_task.h"
+#include "iot_net_data_task.h"
 #include "rtc.h"
 
 
@@ -27,7 +27,7 @@ void soc_start()
 	lock_task_create();
 	motor_lock_task_create();
 	timed_report_task_create();
-	timed_poll_net_data_task_create();
+	iot_net_data_task_create();
 #if TEST_FUNC
 	test_func_start();
 #endif

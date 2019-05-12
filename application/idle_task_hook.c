@@ -11,5 +11,3 @@ void vApplicationTickHook( void )
 {
 	++tick;
 }
-
-

@@ -36,11 +36,17 @@ static uint8_t bc26_tmp_data[BC26_MAX_CACHE_DATA_SIZE + TMP_DATA_OFFSET + 1];
 static EventGroupHandle_t bc26_data_event_handle;
 
 static uint8_t bc26_init_flag = 0;
+#define MAX_NET_WORK_CALLBACK_SIZE   2
+static network_data_call_back network_data_callback_array[MAX_NET_WORK_CALLBACK_SIZE];
 
 #define container_of(ptr, type, member) ({\
     const typeof(((type *)0)->member) *__mptr = (ptr);\
     (type *)((char *)__mptr - offsetof(type, member)); \
 })
+
+
+//static SemaphoreHandle_t at_command_mutex_handle;
+
 
 #define BC26_MODULE_POWER_ON()                                                 \
     do                                                                         \
@@ -59,6 +65,14 @@ static uint8_t bc26_init_flag = 0;
         osDelay(50);                                                           \
         HAL_GPIO_WritePin(BC26_GPIO_GROUP, BC26_PIN7_PWERKEY, GPIO_PIN_SET);   \
     } while (0);
+	
+#define BC26_MODULE_RESET()                             \
+		do																		   \
+		{																		   \
+			HAL_GPIO_WritePin(BC26_GPIO_GROUP, BC26_PIN15_RESET, GPIO_PIN_SET);   \
+			osDelay(100);														   \
+			HAL_GPIO_WritePin(BC26_GPIO_GROUP, BC26_PIN15_RESET, GPIO_PIN_RESET);\
+		} while (0);
 
 void bc26_send_test_data();
 
@@ -72,7 +86,7 @@ static At_commond_struct_t *commandIndexPara(const char *member_command)
     for (i = 0; i < sizeof(bc26_command) / sizeof(At_commond_struct_t); i++)
     {
         // BC26_LOG("i = %d\n", i);
-        if ((size = strlen(member_command)) == strlen(bc26_command[i].at_commond))
+        if ( strlen(member_command) >= (size = strlen(bc26_command[i].at_commond)))
         {
             if (strncmp(member_command, bc26_command[i].at_commond, size) == 0)
             {
@@ -185,6 +199,8 @@ int send_command(char *at_command, int times)
 {
     int i = 0, ret = 0;
     user_error_t sc = 0;
+	//xSemaphoreTake(at_command_mutex_handle,portMAX_DELAY);
+	
     while ((i++) < times)
     {
         BC26_LOG("send command %s for times %d\n", at_command, i);
@@ -209,6 +225,7 @@ int send_command(char *at_command, int times)
     }
 
 exit:
+	//xSemaphoreGive(at_command_mutex_handle);
     return ret;
 }
 
@@ -219,19 +236,32 @@ int bc26_module_selftest()
     //开机
     BC26_MODULE_POWER_ON_AND_NEVER_SLEEP();
     osDelay(100);
+	BC26_MODULE_RESET();
+	osDelay(1000);
     ret = send_command(AT, 3);
     if (ret != RET_OK)
     {
         BC26_LOG("send %s fail\n", AT);
         goto exit;
     }
+	ret = send_command(AT_CGSN_1, 3);
+    if (ret != RET_OK)
+    {
+        BC26_LOG("send %s fail\n", AT_CGSN_1);
+    }
+	//设置不进入sleep模式
+	ret = send_command(AT_QSCLK_DISABLE_SLEEP, 3);
+    if (ret != RET_OK)
+    {
+        BC26_LOG("send %s fail\n", AT_QSCLK_DISABLE_SLEEP);
+    }
+#if 0
     ret = send_command(AT_CPIN$, 3);
     if (ret != RET_OK)
     {
         BC26_LOG("send %s fail\n", AT_CPIN$);
         goto exit;
     }
-#if 0
     ret = send_command(AT_CSQ, 3);
     if (ret != RET_OK)
     {
@@ -239,11 +269,7 @@ int bc26_module_selftest()
         goto exit;
     }
 #endif
-    ret = send_command(AT_CGSN_1, 3);
-    if (ret != RET_OK)
-    {
-        BC26_LOG("send %s fail\n", AT_CGSN_1);
-    }
+    
 #if 0
     ret = send_command(AT_CFUN_1);
 
@@ -312,29 +338,37 @@ void data_care_about_prase_func(uint8_t *data, uint16_t data_len)
             }
 #undef MAX_CSQ_BUFF_LEN
 #endif
-        }
-        else if ((tmp = strstr((char *)data, RETURN_NETWORK_DATA)) != NULL)
-        {
-
-            char *last_comma_index = strrchr(data, ',');
-            char *line_break_index = strrchr(data, '\r');
-            if (last_comma_index != NULL && line_break_index != NULL && line_break_index > last_comma_index)
-            {
-                char *data_len_index = last_comma_index + 1;
-#define MAX_NET_WORK_DATA_LEN 2
-                uint8_t buff[MAX_NET_WORK_DATA_LEN + 1];
-                memset(buff, 0x00, sizeof(buff));
-                uint8_t len = line_break_index - last_comma_index;
-                uint8_t net_data_len = 0;
-                if (len < MAX_NET_WORK_DATA_LEN)
-                {
-                    memcpy(buff, data_len_index, len);
-                    net_data_len = atoi(buff);
-                    BC26_LOG("module data len is %d\n", net_data_len);
-                }
-#undef MAX_NET_WORK_DATA_LEN
-            }
-        }
+        }//字符串格式“+QLWDATARECV: 19,1,0,4,AAAA0000\r\n”,4为数据长度，数据是AAAA0000
+		else if((tmp = strstr(data, RETURN_NETWORK_DATA)) != NULL){
+			uint8_t comma_count = 0;
+			uint8_t *comma_index = NULL;
+			uint8_t *comma_index1 = NULL;
+#define MAX_DATA_SIZE  3
+			uint8_t data_size_buff[MAX_DATA_SIZE + 1];
+			memset(data_size_buff,0x00,sizeof(data_size_buff));
+			uint8_t i = 0;
+			for(i = 0;i < data_len;i++){
+				if(data[i] == ',')comma_count++;
+				if(comma_count == 3)if(comma_index == NULL)comma_index = &data[i];
+				if(comma_count == 4)if(comma_index1 == NULL)comma_index1 = &data[i];
+			}
+			//printf("comma_index:%s comma_index1:%s\n",comma_index,comma_index1);
+			if(comma_index != NULL && comma_index1 != NULL){
+				uint8_t size =	(comma_index1 - comma_index - 1) >= MAX_DATA_SIZE? MAX_DATA_SIZE:(comma_index1 - comma_index - 1);
+				memcpy(data_size_buff,(comma_index + 1),size);
+#undef MAX_DATA_SIZE
+				uint8_t data_size = atoi(data_size_buff) * 2;
+				uint8_t *data_index = comma_index1 + 1;
+				for(i = 0;i < MAX_NET_WORK_CALLBACK_SIZE;i++){
+					if(network_data_callback_array[i] != NULL){
+						network_data_callback_array[i](data_index,data_size);
+					}
+				}
+			}else{
+				DBG_LOG("can not parser\n");
+			}
+	
+		}
     }
 }
 
@@ -376,28 +410,227 @@ void bc26_module_resume()
 
 void bc26_send_test_data()
 {
-    int ret;
+    int ret = 0;
     //wake up bc26 module
-    //if ()
-#if 1
+	uint8_t buff[30];
+	memset(buff,0x00,sizeof(buff));
+	static int i = 0;
+	if(i == 0){
+		send_command(AT_QLWUPDATE,3);
+		send_command(AT_QLWRD_TEST, 3);
+		return;
+		#if 0
+		ret = send_command(AT_QLWRD$, 3);
+		if(ret != RET_OK){
+			DBG_LOG("send AT_QLWRD$ fail\n");
+			goto exit;
+		}
+		#endif
+	}
 
+	i = 0;
+#if 0
     ret = send_command(AT_CFUN_1, 3);
-
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CFUN_1 fail\n");
+		goto exit;
+	}
     ret = send_command(AT_CEREG$, 3);
+	
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CEREG$ fail\n");
+		goto exit;
+	}
 
     ret = send_command(AT_CGATT$, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CGATT$ fail\n");
+		goto exit;
+	}
 
     ret = send_command(AT_CGPADDR_1, 3);
+	
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CGPADDR_1 fail\n");
+		goto exit;
+	}
+	
     ret = send_command(AT_QLWSERV_IP, 3);
-    ret = send_command(AT_QLWCONF_TEST, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWSERV_IP fail\n");
+		goto exit;
+	}
+	
+	memcpy(buff,AT_QLWCONF,sizeof(AT_QLWCONF));
+	strcat(buff,"\"");
+	strcat(buff,imei_data);
+	strcat(buff,"\"");
+	strcat(buff,"\r");
+		
+    ret = send_command(buff, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWCONF fail\n");
+		goto exit;
+	}
+	
     ret = send_command(AT_QLWADDOBJ_WRITE_PAR, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWADDOBJ_WRITE_PAR fail\n");
+		goto exit;
+	}
     ret = send_command(AT_QLWADDOBJ_READ_PAR, 3);
-    osDelay(2000);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWADDOBJ_READ_PAR fail\n");
+		goto exit;
+	}
+    osDelay(200);
     ret = send_command(AT_QLWOPEN_1, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWOPEN_1 fail\n");
+		goto exit;
+	}
+	osDelay(200);
     ret = send_command(AT_QLWCFG_HEX_MODE, 3);
-    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWCFG_HEX_MODE fail\n");
+		goto exit;
+	}
+	osDelay(1000);
+	#if 1
+   // ret = send_command(AT_QLWDATASEND_CON_DATA_TEST, 3);
+	//if(ret != RET_OK){
+	//	DBG_LOG("send AT_QLWDATASEND_CON_DATA_TEST fail\n");
+	//	goto exit;
+	//}
+	ret = send_command(AT_QLWUPDATE, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWUPDATE fail\n");
+		goto exit;
+	}
+	osDelay(200);
+	ret = send_command(AT_QLWRD_TEST, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWRD_TEST fail\n");
+		goto exit;
+	}
+
+	
+	#if 1
+	osDelay(200);
+	
+	ret = send_command(AT_QLWCLOSE, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWCLOSE fail\n");
+		goto exit;
+	}
+	ret = send_command(AT_QLWDEL, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWDEL fail\n");
+		goto exit;
+	}
+	#endif
+	
 #endif
+exit:
+	if(ret != RET_OK){
+		ret = send_command(AT_QLWCLOSE, 3);
+		if(ret != RET_OK){
+			DBG_LOG("send AT_QLWCLOSE fail\n");
+		}
+		ret = send_command(AT_QLWDEL, 3);
+		if(ret != RET_OK){
+			DBG_LOG("send AT_QLWDEL fail\n");
+		}
+	}
+	//return ret;
+	#endif
+	
 }
+
+
+int create_iot_connection(void)
+{
+	int ret = RET_OK;
+	uint8_t buff[30];
+	memset(buff,0x00,sizeof(buff));
+	
+	ret = send_command(AT_CFUN_1, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CFUN_1 fail\n");
+		goto exit;
+	}
+    ret = send_command(AT_CEREG$, 3);
+	
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CEREG$ fail\n");
+		goto exit;
+	}
+
+    ret = send_command(AT_CGATT$, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CGATT$ fail\n");
+		goto exit;
+	}
+
+    ret = send_command(AT_CGPADDR_1, 3);
+	
+	if(ret != RET_OK){
+		DBG_LOG("send AT_CGPADDR_1 fail\n");
+		goto exit;
+	}
+	
+    ret = send_command(AT_QLWSERV_IP, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWSERV_IP fail\n");
+		goto exit;
+	}
+	
+	memcpy(buff,AT_QLWCONF,sizeof(AT_QLWCONF));
+	strcat(buff,"\"");
+	strcat(buff,imei_data);
+	strcat(buff,"\"");
+	strcat(buff,"\r");
+		
+    ret = send_command(buff, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWCONF fail\n");
+		goto exit;
+	}
+	
+    ret = send_command(AT_QLWADDOBJ_WRITE_PAR, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWADDOBJ_WRITE_PAR fail\n");
+		goto exit;
+	}
+    ret = send_command(AT_QLWADDOBJ_READ_PAR, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWADDOBJ_READ_PAR fail\n");
+		goto exit;
+	}
+    osDelay(200);
+    ret = send_command(AT_QLWOPEN_0, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWOPEN_1 fail\n");
+		goto exit;
+	}
+	osDelay(200);
+    ret = send_command(AT_QLWCFG_HEX_MODE, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWCFG_HEX_MODE fail\n");
+		goto exit;
+	}
+	osDelay(1000);
+	ret = send_command(AT_QLWUPDATE, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWUPDATE fail\n");
+		goto exit;
+	}
+	
+exit:
+	return ret;
+
+}
+
 
 /*return RET_ERROR,command fail quality is not update,or return updated quality*/
 int get_csq_singal_quality(uint8_t *quality)
@@ -416,41 +649,41 @@ int get_csq_singal_quality(uint8_t *quality)
 }
 
 /*return -1, or real send data size*/
-int bc26_module_send_data(uint8_t *data, uint8_t size)
+int bc26_module_send_data(uint8_t *dataStr, uint8_t*sizeStr)
 {
-    int ret;
-    if (bc26_init_flag != 1)
-    {
-        bc26_send_test_data();
-    }
-    else
-    {
-        ret = RET_ERROR;
-    }
-    ret = send_command(AT_CFUN_1, 3);
 
-    ret = send_command(AT_CEREG$, 3);
+	//bc26_send_test_data();
 
-    ret = send_command(AT_CGATT$, 3);
-
-    ret = send_command(AT_CGPADDR_1, 3);
-
-    ret = send_command(AT_QLWSERV_IP, 3);
-
-    ret = send_command(AT_QLWCONF_TEST, 3);
-
-    ret = send_command(AT_QLWADDOBJ_WRITE_PAR, 3);
-
-    ret = send_command(AT_QLWADDOBJ_READ_PAR, 3);
-    osDelay(2000);
-    ret = send_command(AT_QLWOPEN_1, 3);
-
-    ret = send_command(AT_QLWCFG_HEX_MODE, 3);
-
-    ret = send_command(AT_QLWDATASEND_CON_DATA_TEST, 3);
+	int ret = 0;
+	uint8_t buff[70];
+	memset(buff,0,sizeof(buff));
+	memcpy(buff,AT_QLWDATASEND_CON,sizeof(AT_QLWDATASEND_CON));
+	strcat(buff,sizeStr);
+	strcat(buff,",");
+	strcat(buff,dataStr);
+	strcat(buff,",");
+	strcat(buff,CON_MODE);
+	strcat(buff,"\r");
+	
+    ret = send_command(buff, 3);	
 exit:
-    return ret;
+    return ret;	
 }
+
+#if 0
+void bc26_module_read_task_function(void *arg)
+{
+    const TickType_t xTicksToWait = pdMS_TO_TICKS(portMAX_DELAY);
+	EventBits_t uxBits;
+	while(1){
+		osDelay(15000);
+		
+	}
+
+}
+#endif
+
+
 
 int bc26_module_init()
 {
@@ -459,7 +692,7 @@ int bc26_module_init()
     bc26_data_event_handle = xEventGroupCreate();
     if (bc26_data_event_handle == NULL)
     {
-        DBG_LOG("console.console_event_handle group create fail\n");
+        DBG_LOG("bc26_data_event_handle group create fail\n");
     }
     else
     {
@@ -479,12 +712,31 @@ int bc26_module_init()
     {
         DBG_LOG("bc26 uart core read register fail %d\n", sc);
     }
+
     osThreadDef(bc26_task, bc26_module_task_function, osPriorityNormal, 0, 128);
     osThreadId task_handle = osThreadCreate(osThread(bc26_task), NULL);
     if (task_handle == NULL)
     {
         DBG_LOG("bc26_module_task_function create fail\n");
     }
+	
+#if 0
+	at_command_mutex_handle  = xSemaphoreCreateMutex();
+	if(at_command_mutex_handle == NULL){
+		DBG_LOG("xSemaphoreCreateMutex create fail\n");
+		while(1);
+	}
+
+	osThreadDef(bc26_read_task, bc26_module_read_task_function, osPriorityAboveNormal, 0, 128);
+
+    task_handle = osThreadCreate(osThread(bc26_read_task), NULL);
+    if (task_handle == NULL)
+    {
+        DBG_LOG("bc26_module_read_task_function create fail\n");
+		
+    }
+#endif
+
     osDelay(20);
 
     ret = bc26_module_selftest();
@@ -498,3 +750,25 @@ int bc26_module_init()
     }
     return ret;
 }
+
+int register_bc26_network_data(network_data_call_back callback)
+{
+	int ret = RET_ERROR;
+	uint8_t i;
+	if(callback == NULL){
+
+		ret = RET_PARA_ERR;
+		goto exit;
+	}
+	
+	for(i = 0;i < MAX_NET_WORK_CALLBACK_SIZE;i++){
+		if(network_data_callback_array[i] == NULL){
+			network_data_callback_array[i] = callback;
+			ret = RET_OK;
+			goto exit;
+		}
+	}	
+exit:
+	return ret;
+}
+
