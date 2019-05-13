@@ -60,10 +60,10 @@ int myatoi(uint8_t *data,int radix)
 				value = *data - '0';
 			}
 			if(*data >= 'A' && *data <= 'F'){
-				value = *data - 'A';
+				value = *data - 'A' + 0x0A;
 			}
 			if(*data >= 'a' && *data <= 'f'){
-				value = *data - 'a';
+				value = *data - 'a' + 0x0A;
 			}
             
 

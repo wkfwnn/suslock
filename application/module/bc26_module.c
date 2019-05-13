@@ -547,6 +547,20 @@ exit:
 	
 }
 
+void update_connection(void )
+{
+	int ret = send_command(AT_QLWUPDATE, 3);
+	if(ret != RET_OK){
+		DBG_LOG("send AT_QLWUPDATE fail\n");
+		goto exit;
+	}
+exit:
+	if(ret != RET_OK){
+		create_iot_connection();
+	}
+	return;
+}
+
 
 int create_iot_connection(void)
 {
@@ -619,7 +633,7 @@ int create_iot_connection(void)
 		DBG_LOG("send AT_QLWCFG_HEX_MODE fail\n");
 		goto exit;
 	}
-	osDelay(1000);
+	osDelay(1500);
 	ret = send_command(AT_QLWUPDATE, 3);
 	if(ret != RET_OK){
 		DBG_LOG("send AT_QLWUPDATE fail\n");
@@ -627,6 +641,12 @@ int create_iot_connection(void)
 	}
 	
 exit:
+	if(ret != RET_OK){
+		ret = send_command(AT_QLWDEL, 3);
+		if(ret != RET_OK){
+			DBG_LOG("send AT_QLWDEL fail\n");
+		}
+	}
 	return ret;
 
 }
@@ -667,6 +687,9 @@ int bc26_module_send_data(uint8_t *dataStr, uint8_t*sizeStr)
 	
     ret = send_command(buff, 3);	
 exit:
+	if(ret != RET_OK){
+		create_iot_connection();
+	}
     return ret;	
 }
 

@@ -19,5 +19,7 @@ int bc26_module_send_data(uint8_t *dataStr, uint8_t*sizeStr);
 int bc26_module_init(void);
 int get_csq_singal_quality(uint8_t *quality);
 int register_bc26_network_data(network_data_call_back callback);
+void update_connection(void);
+
 #endif
 

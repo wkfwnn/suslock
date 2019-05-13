@@ -60,16 +60,15 @@ void command_parser_and_feedback()
 			ret = RET_PARA_ERR;
 		}
 	}
-	
+	command_ack.mid_filed = REVERT_BIT_HIGH_8_LOW_8(command.mid_filed);
 exit:
 	if(ret != RET_OK){
 		command_ack.errcode = 0x01;
 		command_ack.result = 0x01;
-		command_ack.mid_filed = 0x00;
+		
 	}else{
 		command_ack.errcode = 0x00;
 		command_ack.result = 0x00;
-		command_ack.mid_filed = REVERT_BIT_HIGH_8_LOW_8(command.mid_filed);
 	}
 	
 	command_ack.command_filed_id = COMMAND_ACK_FILED_FIX_ID_SEND;
@@ -84,11 +83,14 @@ void iot_net_task_func(void * argument)
 	float voltage;
 	
 	EventBits_t uxBits;
-    const TickType_t xTicksToWait = pdMS_TO_TICKS(portMAX_DELAY);
-	
+    const TickType_t xTicksToWait = pdMS_TO_TICKS(5000);
+	uint32_t times = 0;
 	int i = 0;
-	osDelay(10000);
-	create_iot_connection();
+	osDelay(5000);
+	while(create_iot_connection()){
+		osDelay(2000);
+	}
+	
 	status_report report;
 	memset(&report,0x00,sizeof(report));
 	report.report_filed_id = STATUS_REPORT_FILED_FIX_ID;
@@ -102,8 +104,7 @@ void iot_net_task_func(void * argument)
                                          pdTRUE, pdFALSE, xTicksToWait);
 		if ((uxBits & NET_DATA_EVENT_BITS) != 0){
 			command_parser_and_feedback();	
-		}
-		if ((uxBits & REGULAR_REPORTING_EVENT_BITS) != 0){
+		}else if ((uxBits & REGULAR_REPORTING_EVENT_BITS) != 0){
 			char dataBuff[30] = {0x01,0x20};
 			char sizeBuff[3] = {0x00,0x00,0x00};
 			get_battery_soc(&report.soc,&voltage);
@@ -113,6 +114,21 @@ void iot_net_task_func(void * argument)
 			DBG_LOG("%d,sizeBuff:%s\n",size,sizeBuff);
 			DBG_LOG("%s\n",dataBuff);
 			bc26_module_send_data(dataBuff,sizeBuff);	
+		}else{
+			if(times++)
+			update_connection();
+			if(times %4 == 0){
+				char dataBuff[30] = {0x01,0x20};
+				char sizeBuff[3] = {0x00,0x00,0x00};
+				get_battery_soc(&report.soc,&voltage);
+				DBG_LOG("%d\n",report.soc);
+				intostring(&size, sizeof(uint8_t), sizeBuff,10);
+				intostring((uint8_t *)&report,sizeof(report), dataBuff,16);
+				DBG_LOG("%d,sizeBuff:%s\n",size,sizeBuff);
+				DBG_LOG("%s\n",dataBuff);
+				bc26_module_send_data(dataBuff,sizeBuff);	
+			}
+			
 		}
 	
 	}
